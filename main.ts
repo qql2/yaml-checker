@@ -1,5 +1,5 @@
 /* eslint-disable prefer-const */
-import { MarkdownView, Modal, Notice, Plugin, TFile, parseYaml } from 'obsidian';
+import { Modal, Notice, Plugin, TFile, parseYaml } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -26,7 +26,7 @@ export default class YAML_CHECKER extends Plugin {
 
 				for (let file of this.app.vault.getMarkdownFiles()) {
 					try {
-						await this.getYAML(file);
+						await this.parseYAML(file);
 					} catch (error) {
 						filesWithError.push({ file, error });
 					}
@@ -68,19 +68,31 @@ export default class YAML_CHECKER extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async getYAML(file: TFile): Promise<any> {
-		const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!markdownView) {
-			throw new Error('No markdown view is active');
-		}
-
-		const editor = markdownView.editor;
-		const yaml = parseYaml(editor.getValue());
-
-		if (!yaml) {
-			throw new Error(`Invalid YAML format in file ${file.path}`);
-		}
-
-		return yaml;
+	async parseYAML(file: TFile): Promise<any> {
+		let yaml = await this.GetYAMLtxt(file, this)
+		if (!yaml) return null;
+		parseYaml(yaml)
+	}
+	async getYAMLPos(file: TFile, plugin: Plugin) {
+		const doc = await plugin.app.vault.read(file);
+		const hasYAMLRgx = /(^---\n)(.)*?(\n?---(\n|$))/gs
+		let hasYAML = false;
+		let str = '';
+		let index = 4;
+		doc.replace(hasYAMLRgx, (word, ...arg) => {
+			hasYAML = true;
+			if (word) str = word;
+			index = arg.slice(-2)[0];
+			return word;
+		})
+		const FinalLineOffset = str.length - 1 + index;
+		if (!hasYAML) return null;
+		return { start: 4, end: FinalLineOffset - 4 };
+	}
+	async GetYAMLtxt(file: TFile, plugin: Plugin) {
+		let yamlPos = await this.getYAMLPos(file, plugin);
+		if (!yamlPos || yamlPos.end - yamlPos.start == -1) return ''
+		const txt = (await plugin.app.vault.read(file)).slice(yamlPos.start, yamlPos.end + 1)
+		return txt;
 	}
 }

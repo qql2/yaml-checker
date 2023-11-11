@@ -1,6 +1,8 @@
 /* eslint-disable prefer-const */
 import { Modal, Notice, Plugin, TFile, parseYaml } from 'obsidian';
 
+import { parseDocument } from 'yaml';
+
 // Remember to rename these classes and interfaces!
 
 interface Settings {
@@ -71,7 +73,8 @@ export default class YAML_CHECKER extends Plugin {
 	async parseYAML(file: TFile): Promise<any> {
 		let yaml = await this.GetYAMLtxt(file, this)
 		if (!yaml) return null;
-		parseYaml(yaml)
+		let doc = parseDocument(yaml)
+		doc.toString()
 	}
 	async getYAMLPos(file: TFile, plugin: Plugin) {
 		const doc = await plugin.app.vault.read(file);

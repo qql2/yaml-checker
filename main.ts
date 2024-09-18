@@ -1,6 +1,7 @@
 /* eslint-disable prefer-const */
 import { Modal, Notice, Plugin, TFile, parseYaml } from 'obsidian';
 
+import { YAML } from "qql1-yaml"
 import { parseDocument } from 'yaml';
 
 // Remember to rename these classes and interfaces!
@@ -19,7 +20,6 @@ export default class YAML_CHECKER extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
 			id: 'check all YAML format',
 			name: 'Check the YAML format in all the markdowns',
@@ -28,7 +28,10 @@ export default class YAML_CHECKER extends Plugin {
 
 				for (let file of this.app.vault.getMarkdownFiles()) {
 					try {
-						await this.parseYAML(file);
+						if (await this.hasEmptyField(file)) {
+							let error = new Error('Empty field in YAML');
+							filesWithError.push({ file, error })
+						}
 					} catch (error) {
 						filesWithError.push({ file, error });
 					}
@@ -43,6 +46,11 @@ export default class YAML_CHECKER extends Plugin {
 				}
 			}
 		});
+	}
+	async hasEmptyField(file: TFile) {
+		let yaml = await this.GetYAMLtxt(file, this)
+		if (!yaml) return false;
+		return YAML.hasEmptyValue(yaml);
 	}
 	showError(filesWithError: { file: TFile; error: Error; }[]) {
 		let errorList = new Modal(this.app);
